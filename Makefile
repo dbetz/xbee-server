@@ -43,7 +43,7 @@ LOAD=xbee-load$(EXT)
 all:	$(CONFIG) $(LOADER_SERVER) $(XABS_SERVER) # $(LOAD)
 
 %.dat:	%.spin
-	@spin2cpp --dat -o $@ $<
+	@openspin -c -o $@ $<
 	@echo $@
 	
 %.o: %.dat

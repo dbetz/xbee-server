@@ -48,7 +48,9 @@ CON
   STATE_DATA
   STATE_CHKSUM
   STATE_WAIT
-  
+
+PUB dummy
+
 DAT
 
 '***********************************
@@ -171,7 +173,7 @@ receive                 jmpret  rxcode,txcode         'run a chunk of transmit c
                         wrbyte  rxdata, t1            'write the byte to the receive buffer
                         add     rcv_head, #1
                         and     rcv_head, rcv_mask
-                        cmp     rcv_count, rcv_max wz wc
+                        cmp     rcv_count, rcv_max wz, wc
         if_b            add     rcv_count, #1
         if_ae           add     rcv_tail, #1
         if_ae           and     rcv_tail, rcv_mask
@@ -180,7 +182,7 @@ receive                 jmpret  rxcode,txcode         'run a chunk of transmit c
         if_ae           or      dira, led
 #endif
         
-                        cmp     rcv_count, high_water wz wc
+                        cmp     rcv_count, high_water wz, wc
         if_a            or      outa, rtsmask
 #ifdef RTS_DEBUG
         if_a            or      outa, led2
@@ -200,7 +202,7 @@ assemble                cmp     rcv_state, #STATE_WAIT wz
                         and     rcv_tail, rcv_mask
                         sub     rcv_count, #1
                                 
-                        cmp     rcv_count, low_water wz wc
+                        cmp     rcv_count, low_water wz, wc
         if_b            andn    outa, rtsmask
 
                         mov     t1, rcv_state

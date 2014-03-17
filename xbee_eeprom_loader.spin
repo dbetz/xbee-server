@@ -26,6 +26,8 @@ CON
   I2C_READ = 1
   I2C_WRITE = 0
 
+PUB dummy
+
 DAT
 
 '

@@ -3,6 +3,8 @@ CON
    BUFFER_LENGTH = 64
    BUFFER_MASK   = BUFFER_LENGTH - 1
 
+PUB dummy
+
 DAT
 
 '***********************************
