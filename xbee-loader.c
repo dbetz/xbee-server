@@ -42,7 +42,7 @@ MethodBinding_t methodBindings[] = {
 {   NULL,       NULL                    }
 };
 
-static EEPROM_BOOT state;
+static EEPROM_BOOT eeprom_state;
 static EEPROM *eeprom;
 
 static void start_loader(uint32_t addr, uint32_t count);
@@ -52,16 +52,15 @@ int main(void)
 {
     Server_t server;
     
-    if (http_init(&server) != 0)
-        return 1;
-
-    if ((eeprom = eepromBootOpen(&state, EEPROM_ADDR)) == NULL) {
+    if ((eeprom = eepromBootOpen(&eeprom_state, EEPROM_ADDR)) == NULL) {
         printf("eepromOpen failed\n");
         return 1;
     }
-    
+            
+    if (http_init(&server) != 0)
+        return 1;
     server.methodBindings = methodBindings;
-        
+
     http_serve(&server);
     
     return 0;
@@ -75,7 +74,8 @@ static void handle_options_request(Socket_t *sock, int phase)
 
 enum {
     UNKNOWN_REQ,
-    EEPROM_REQ,
+    EEPROM_RD_REQ,
+    EEPROM_WR_REQ,
     LOAD_REQ
 };
 
@@ -92,10 +92,15 @@ static void handle_xpost_request(Socket_t *sock, int phase)
             ++p;
         while (*p != '\0' && isspace(*p))
             ++p;
-        if (strncmp(p, "/eeprom/", 8) == 0) {
-            p += 8;
+        if (strncmp(p, "/eeprom-rd/", 11) == 0) {
+            p += 11;
             start = atoi(p);
-            type = EEPROM_REQ;
+            type = EEPROM_RD_REQ;
+        }
+        else if (strncmp(p, "/eeprom-wr/", 11) == 0) {
+            p += 11;
+            start = atoi(p);
+            type = EEPROM_WR_REQ;
         }
         else if (strncmp(p, "/load/", 6) == 0) {
             p += 6;
@@ -116,7 +121,18 @@ static void handle_xpost_request(Socket_t *sock, int phase)
         break;
     case HP_CONTENT:
         switch (type) {
-        case EEPROM_REQ:
+        case EEPROM_RD_REQ:
+            for (remaining = sock->length; remaining > 0; remaining -= cnt) {
+                if ((cnt = remaining) > EEPROM_BLOCK_SIZE)
+                    cnt = EEPROM_BLOCK_SIZE;
+                if (eepromWrite(eeprom, (uint32_t)start, (uint8_t *)p, cnt) != 0)
+                    printf("eepromWrite failed\n");
+                start += cnt;
+                p += cnt;
+            }
+            http_send_response(sock, (uint8_t *)XPOST_RESPONSE, sizeof(XPOST_RESPONSE) - 1);
+            break;
+        case EEPROM_WR_REQ:
             for (remaining = sock->length; remaining > 0; remaining -= cnt) {
                 if ((cnt = remaining) > EEPROM_BLOCK_SIZE)
                     cnt = EEPROM_BLOCK_SIZE;
@@ -128,8 +144,11 @@ static void handle_xpost_request(Socket_t *sock, int phase)
             http_send_response(sock, (uint8_t *)XPOST_RESPONSE, sizeof(XPOST_RESPONSE) - 1);
             break;
         case LOAD_REQ:
+            printf("load: %04x %d\n", start, count);
             http_send_response(sock, (uint8_t *)XPOST_RESPONSE, sizeof(XPOST_RESPONSE) - 1);
             http_term(sock->server);
+            if (eepromClose(eeprom) != 0)
+                printf("failed to close eeprom driver\n");
             start_loader(start, count);
             break;
         default:
@@ -156,11 +175,14 @@ static void start_loader(uint32_t addr, uint32_t count)
 {
     extern uint32_t binary_xbee_eeprom_loader_dat_start[];
     LoaderHdr *hdr = (LoaderHdr *)binary_xbee_eeprom_loader_dat_start;
+    
     hdr->i2cDataSet = ((_clkfreq / 10000) * 250) / 100000;
     hdr->i2cClkLow = ((_clkfreq / 10000) * 1300) / 100000;
     hdr->i2cClkHigh = ((_clkfreq / 10000) * 1000) / 100000;
     hdr->eeprom_addr = addr;
     hdr->hub_addr = 0x0000;
     hdr->count = count;
+
     coginit(cogid(), binary_xbee_eeprom_loader_dat_start, 0);
+    /* should never reach here! */
 }

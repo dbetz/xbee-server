@@ -81,14 +81,10 @@ typedef struct {
 
 #define field_offset(s, f)  ((int)&((s *)0)->f)
 
-/* place these data structures at the top of memory so the loader doesn't overwrite them */
-//XbeeFrame_t *mailbox = (XbeeFrame_t *)(HUBSIZE - sizeof(XbeeFrame_t));
-uint8_t *response = (uint8_t *)HUBSIZE - sizeof(XbeeFrame_t) - RESPONSESIZE;
-
-
 /* prototypes */
 static void handle_ipv4_frame(Server_t *server, IPV4RX_header_t *frame, int length);
 static void handle_txstatus_frame(Server_t *server, TXStatus_t *frame, int length);
+static int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length);
 static void send_at_command(Server_t *server, int id, char *fmt, ...);
 static void handle_atresponse_frame(Server_t *server, ATResponse_t *frame, int length);
 static void parse_request(Socket_t *sock);
@@ -418,7 +414,7 @@ void http_send_response(Socket_t *sock, uint8_t *data, int length)
     sock->flags &= ~SF_BUSY;
 }
 
-int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length)
+static int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length)
 {
     IPV4TX_header_t *txhdr = (IPV4TX_header_t *)frame;
     char *ptr = (char *)data;

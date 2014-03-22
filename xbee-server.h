@@ -77,6 +77,4 @@ void http_term(Server_t *state);
 void http_serve(Server_t *state);
 void http_send_response(Socket_t *sock, uint8_t *data, int length);
 
-int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length);
-
 #endif

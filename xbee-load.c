@@ -36,7 +36,7 @@
 #define CHUNK_SIZE  512
 
 #define EEPROM_REQUEST      "\
-XPOST /eeprom/%d HTTP/1.1\r\n\
+XPOST /eeprom-wr/%d HTTP/1.1\r\n\
 Content-Length: %u\r\n\
 \r\n"
 

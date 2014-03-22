@@ -53,7 +53,7 @@ entry1                  ' from sdspiFemto.spin
 :outer                  mov     t1, count wz
                 if_z    jmp     #:done
                         cmp     t1, #MAX_EEPROM_XFER wz, wc
-                if_a    mov     t1, #MAX_EEPROM_XFER
+                if_b    mov     t1, #MAX_EEPROM_XFER
                 
                         ' setup the read address
                         call    #i2cStart
