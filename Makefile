@@ -35,12 +35,14 @@ $(COMMON_SERVER_OBJS) \
 xabs-requests.o
 
 CONFIG=xbee-config.elf
-LOADER=xbee-loader.elf
 LOADER_SERVER=xbee-server.elf
 XABS_SERVER=xabs-server.elf
 LOAD=xbee-load$(EXT)
 
-all:	$(CONFIG) $(LOADER_SERVER) $(XABS_SERVER) # $(LOAD)
+all:	\
+$(CONFIG) $(basename $(CONFIG)).binary \
+$(LOADER_SERVER) $(basename $(LOADER_SERVER)).binary \
+$(LOAD)
 
 %.dat:	%.spin
 	@openspin -c -o $@ $<
@@ -53,7 +55,11 @@ all:	$(CONFIG) $(LOADER_SERVER) $(XABS_SERVER) # $(LOAD)
 %.o: %.c $(HDRS)
 	@propeller-elf-gcc $(CFLAGS) -c -o $@ $<
 	@echo $@
-
+	
+%.binary: %.elf
+	@propeller-load -s $<
+	@echo $@
+	
 $(CONFIG): $(CONFIG_OBJS)
 	@propeller-elf-gcc $(CFLAGS) -o $@ $(CONFIG_OBJS)
 	@echo $@
