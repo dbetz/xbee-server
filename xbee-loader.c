@@ -12,8 +12,8 @@
 #define OPTIONS_RESPONSE "\
 HTTP/1.1 200 OK\r\n\
 Access-Control-Allow-Origin: *\r\n\
-Access-Control-Allow-Methods: GET, POST, OPTIONS, XPOST, XLOAD\r\n\
-Access-Control-Allow-Headers: XPOST, XLOAD\r\n\
+Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT\r\n\
+Access-Control-Allow-Headers: PUT\r\n\
 Access-Control-Max-Age: 1000000\r\n\
 Keep-Alive: timeout=1, max=100\r\n\
 Connection: Keep-Alive\r\n\
@@ -21,7 +21,7 @@ Content-Type: text/plain\r\n\
 Content-Length: 0\r\n\
 \r\n"
 
-#define XPOST_RESPONSE "\
+#define PUT_RESPONSE "\
 HTTP/1.1 200 OK\r\n\
 Access-Control-Allow-Origin: *\r\n\
 Content-Length: 0\r\n\
@@ -34,11 +34,11 @@ Content-Length: 0\r\n\
 \r\n"
 
 static void handle_options_request(Socket_t *sock, int phase);
-static void handle_xpost_request(Socket_t *sock, int phase);
+static void handle_put_request(Socket_t *sock, int phase);
 
 MethodBinding_t methodBindings[] = {
 {   "OPTIONS",  handle_options_request  },
-{   "XPOST",    handle_xpost_request    },
+{   "PUT",      handle_put_request      },
 {   NULL,       NULL                    }
 };
 
@@ -79,7 +79,7 @@ enum {
     LOAD_REQ
 };
 
-static void handle_xpost_request(Socket_t *sock, int phase)
+static void handle_put_request(Socket_t *sock, int phase)
 {
     static unsigned int start, count;
     static int type;
@@ -92,13 +92,8 @@ static void handle_xpost_request(Socket_t *sock, int phase)
             ++p;
         while (*p != '\0' && isspace(*p))
             ++p;
-        if (strncmp(p, "/eeprom-rd/", 11) == 0) {
-            p += 11;
-            start = atoi(p);
-            type = EEPROM_RD_REQ;
-        }
-        else if (strncmp(p, "/eeprom-wr/", 11) == 0) {
-            p += 11;
+        if (strncmp(p, "/eeprom/", 8) == 0) {
+            p += 8;
             start = atoi(p);
             type = EEPROM_WR_REQ;
         }
@@ -121,17 +116,6 @@ static void handle_xpost_request(Socket_t *sock, int phase)
         break;
     case HP_CONTENT:
         switch (type) {
-        case EEPROM_RD_REQ:
-            for (remaining = sock->length; remaining > 0; remaining -= cnt) {
-                if ((cnt = remaining) > EEPROM_BLOCK_SIZE)
-                    cnt = EEPROM_BLOCK_SIZE;
-                if (eepromWrite(eeprom, (uint32_t)start, (uint8_t *)p, cnt) != 0)
-                    printf("eepromWrite failed\n");
-                start += cnt;
-                p += cnt;
-            }
-            http_send_response(sock, (uint8_t *)XPOST_RESPONSE, sizeof(XPOST_RESPONSE) - 1);
-            break;
         case EEPROM_WR_REQ:
             for (remaining = sock->length; remaining > 0; remaining -= cnt) {
                 if ((cnt = remaining) > EEPROM_BLOCK_SIZE)
@@ -141,11 +125,11 @@ static void handle_xpost_request(Socket_t *sock, int phase)
                 start += cnt;
                 p += cnt;
             }
-            http_send_response(sock, (uint8_t *)XPOST_RESPONSE, sizeof(XPOST_RESPONSE) - 1);
+            http_send_response(sock, (uint8_t *)PUT_RESPONSE, sizeof(PUT_RESPONSE) - 1);
             break;
         case LOAD_REQ:
             printf("load: %04x %d\n", start, count);
-            http_send_response(sock, (uint8_t *)XPOST_RESPONSE, sizeof(XPOST_RESPONSE) - 1);
+            http_send_response(sock, (uint8_t *)PUT_RESPONSE, sizeof(PUT_RESPONSE) - 1);
             http_term(sock->server);
             if (eepromClose(eeprom) != 0)
                 printf("failed to close eeprom driver\n");
