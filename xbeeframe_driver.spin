@@ -284,6 +284,11 @@ xmt_dispatch            jmp     #do_xmt_start
                         jmp     #do_xmt_len_lo
                         jmp     #do_xmt_data
                         jmp     #do_xmt_chksum
+                        jmp     #do_xmt_wait
+
+do_xmt_wait             mov     t1, #STATUS_IDLE
+                        wrlong  t1, tx_status_ptr
+                        mov     xmt_state, #STATE_START
 
 do_xmt_start            rdlong  t1, tx_status_ptr wz
         if_z            jmp     #transmit
@@ -312,9 +317,7 @@ do_xmt_data             tjz     xmt_cnt, #do_xmt_chksum
                         sub     xmt_cnt, #1
                         jmp     #tx_start
 
-do_xmt_chksum           mov     t1, #STATUS_IDLE
-                        wrlong  t1, tx_status_ptr
-                        mov     xmt_state, #STATE_START
+do_xmt_chksum           mov     xmt_state, #STATE_WAIT
                         mov     txdata, #$ff
                         and     xmt_chksum, #$ff
                         sub     txdata, xmt_chksum

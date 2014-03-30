@@ -128,7 +128,6 @@ static void handle_put_request(Socket_t *sock, int phase)
             http_send_response(sock, (uint8_t *)PUT_RESPONSE, sizeof(PUT_RESPONSE) - 1);
             break;
         case LOAD_REQ:
-            printf("load: %04x %d\n", start, count);
             http_send_response(sock, (uint8_t *)PUT_RESPONSE, sizeof(PUT_RESPONSE) - 1);
             http_term(sock->server);
             if (eepromClose(eeprom) != 0)
