@@ -103,8 +103,8 @@ entry                   mov     t1, par              'get init structure address
                         mov     rcv_mask, rcv_max
                         sub     rcv_mask, #1
 
-                        mov     t1, #STATUS_IDLE      'no frame available yet
-                        wrlong  t1, rx_status_ptr
+                        ' no frame available yet
+                        wrlong  status_idle_value, rx_status_ptr
 
                         mov     t1, #0                'signal end of initialization
                         wrlong  t1, par
@@ -244,8 +244,7 @@ do_rcv_chksum           add     rcv_chksum, rxdata    'update the checksum
               
                         wrlong  rcv_length, rx_length_ptr 'pass the frame to the application
                         wrlong  rcv_buf1, rx_frame_ptr
-                        mov     t1, #STATUS_BUSY
-                        wrlong  t1, rx_status_ptr
+                        wrlong  status_busy_value, rx_status_ptr
                         mov     rcv_state, #do_rcv_wait
 
 do_rcv_wait             rdlong  t1, rx_status_ptr wz
@@ -261,8 +260,7 @@ transmit                jmpret  txcode,rxcode         'run a chunk of mailbox co
 
                         jmp     xmt_state
 
-do_xmt_wait             mov     t1, #STATUS_IDLE
-                        wrlong  t1, tx_status_ptr
+do_xmt_wait             wrlong  status_idle_value, tx_status_ptr
                         mov     xmt_state, #do_xmt_start
 
 do_xmt_start            rdlong  t1, tx_status_ptr wz
@@ -328,6 +326,8 @@ tx_start                or      txdata,#$100          'or in a stop bit
 '
 '
 zero                    long    0
+status_idle_value       long    STATUS_IDLE
+status_busy_value       long    STATUS_BUSY
 word_mask               long    $ffff
 
 '

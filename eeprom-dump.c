@@ -7,7 +7,8 @@
 #include <eeprom.h>
 
 #define START               0x8000
-#define LENGTH              0x2674
+//#define LENGTH              0x2674
+#define LENGTH              60
 
 #define EEPROM_ADDR         0xa0
 #define EEPROM_BLOCK_SIZE   128

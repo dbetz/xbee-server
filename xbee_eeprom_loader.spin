@@ -53,7 +53,7 @@ entry1                  ' from sdspiFemto.spin
 :outer                  mov     t1, count wz
                 if_z    jmp     #:done
                         cmp     t1, #MAX_EEPROM_XFER wz, wc
-                if_b    mov     t1, #MAX_EEPROM_XFER
+                if_a    mov     t1, #MAX_EEPROM_XFER
                 
                         ' setup the read address
                         call    #i2cStart
@@ -71,7 +71,7 @@ entry1                  ' from sdspiFemto.spin
                         mov     i2cData, #I2C_EEPROM_ADDR
                         or      i2cData, #I2C_READ
                         call    #i2cWrite
-:inner                  cmp     count,#2 wc         ' Carry true if this is the last byte
+:inner                  cmp     t1,#2 wc            ' Carry true if this is the last byte
                         call    #i2cRead
                         wrbyte  i2cData, hub_addr
                         add     eeprom_addr, #1
