@@ -41,14 +41,6 @@ CON
   ' character codes
   START = $7e   ' start of a frame
 
-  #0
-  STATE_START
-  STATE_LEN_HI
-  STATE_LEN_LO
-  STATE_DATA
-  STATE_CHKSUM
-  STATE_WAIT
-
 PUB dummy
 
 DAT
@@ -128,8 +120,9 @@ entry                   mov     t1, par              'get init structure address
                         mov     rxcode,#receive       'initialize ping-pong multitasking
                         mov     txcode,#transmit
 
-                        mov     rcv_state, #STATE_START 'initialize the frame receive state
-                        mov     xmt_state, #STATE_START 'initialize the frame transmit state
+                        ' initialize the frame receive and transmit states
+                        mov     rcv_state, #do_rcv_start
+                        mov     xmt_state, #do_xmt_start
 
 '
 '
@@ -189,7 +182,7 @@ receive                 jmpret  rxcode,txcode         'run a chunk of transmit c
         if_a            or      dira, led2
 #endif
         
-assemble                cmp     rcv_state, #STATE_WAIT wz
+assemble                cmp     rcv_state, #do_rcv_wait wz
         if_z            jmp     #do_rcv_wait
         
                         cmp     rcv_count, #0 wz
@@ -205,9 +198,7 @@ assemble                cmp     rcv_state, #STATE_WAIT wz
                         cmp     rcv_count, low_water wz, wc
         if_b            andn    outa, rtsmask
 
-                        mov     t1, rcv_state
-                        add     t1, #rcv_dispatch
-                        jmp     t1
+                        jmp     rcv_state
                         
 #ifdef FIFO_DEBUG
 led                     long    1 << 26
@@ -220,20 +211,13 @@ led2                    long    1 << 27
 high_water              long    1000
 low_water               long    100
 
-rcv_dispatch            jmp     #do_rcv_start
-                        jmp     #do_rcv_len_hi
-                        jmp     #do_rcv_len_lo
-                        jmp     #do_rcv_data
-                        jmp     #do_rcv_chksum
-                        jmp     #do_rcv_wait
-
 do_rcv_start            cmp     rxdata, #START wz
-              if_z      mov     rcv_state, #STATE_LEN_HI
+              if_z      mov     rcv_state, #do_rcv_len_hi
                         jmp     #receive              'byte done, receive next byte
 
 do_rcv_len_hi           mov     rcv_length, rxdata
                         shl     rcv_length, #8
-                        mov     rcv_state, #STATE_LEN_LO
+                        mov     rcv_state, #do_rcv_len_lo
                         jmp     #receive              'byte done, receive next byte
 
 do_rcv_len_lo           or      rcv_length, rxdata
@@ -241,8 +225,8 @@ do_rcv_len_lo           or      rcv_length, rxdata
               if_a      jmp     #look_for_frame
                         mov     rcv_chksum, #0
                         mov     rcv_cnt, rcv_length wz
-              if_z      mov     rcv_state, #STATE_CHKSUM
-              if_nz     mov     rcv_state, #STATE_DATA
+              if_z      mov     rcv_state, #do_rcv_chksum
+              if_nz     mov     rcv_state, #do_rcv_data
                         mov     rcv_ptr, rcv_buf1
                         jmp     #receive              'byte done, receive next byte
 
@@ -250,7 +234,7 @@ do_rcv_data             add     rcv_chksum, rxdata    'update the checksum
                         wrbyte  rxdata, rcv_ptr
                         add     rcv_ptr, #1
                         djnz    rcv_cnt, #receive
-                        mov     rcv_state, #STATE_CHKSUM
+                        mov     rcv_state, #do_rcv_chksum
                         jmp     #receive              'byte done, receive next byte
 
 do_rcv_chksum           add     rcv_chksum, rxdata    'update the checksum
@@ -262,12 +246,12 @@ do_rcv_chksum           add     rcv_chksum, rxdata    'update the checksum
                         wrlong  rcv_buf1, rx_frame_ptr
                         mov     t1, #STATUS_BUSY
                         wrlong  t1, rx_status_ptr
-                        mov     rcv_state, #STATE_WAIT
+                        mov     rcv_state, #do_rcv_wait
 
 do_rcv_wait             rdlong  t1, rx_status_ptr wz
               if_nz     jmp     #receive
                         
-look_for_frame          mov     rcv_state, #STATE_START
+look_for_frame          mov     rcv_state, #do_rcv_start
                         jmp     #receive              'byte done, receive next byte
 
 '
@@ -275,36 +259,27 @@ look_for_frame          mov     rcv_state, #STATE_START
 '
 transmit                jmpret  txcode,rxcode         'run a chunk of mailbox code, then return
 
-                        mov     t1, xmt_state
-                        add     t1, #xmt_dispatch
-                        jmp     t1
-
-xmt_dispatch            jmp     #do_xmt_start
-                        jmp     #do_xmt_len_hi
-                        jmp     #do_xmt_len_lo
-                        jmp     #do_xmt_data
-                        jmp     #do_xmt_chksum
-                        jmp     #do_xmt_wait
+                        jmp     xmt_state
 
 do_xmt_wait             mov     t1, #STATUS_IDLE
                         wrlong  t1, tx_status_ptr
-                        mov     xmt_state, #STATE_START
+                        mov     xmt_state, #do_xmt_start
 
 do_xmt_start            rdlong  t1, tx_status_ptr wz
         if_z            jmp     #transmit
                         rdlong  xmt_ptr, tx_frame_ptr
                         rdlong  xmt_cnt, tx_length_ptr
-                        mov     xmt_state, #STATE_LEN_HI
+                        mov     xmt_state, #do_xmt_len_hi
                         mov     txdata, #START
                         jmp     #tx_start
 
-do_xmt_len_hi           mov     xmt_state, #STATE_LEN_LO
+do_xmt_len_hi           mov     xmt_state, #do_xmt_len_lo
                         mov     txdata, xmt_cnt
                         shr     txdata, #8
                         and     txdata, #$ff
                         jmp     #tx_start
 
-do_xmt_len_lo           mov     xmt_state, #STATE_DATA
+do_xmt_len_lo           mov     xmt_state, #do_xmt_data
                         mov     txdata, xmt_cnt
                         and     txdata, #$ff
                         mov     xmt_chksum, #0
@@ -317,7 +292,7 @@ do_xmt_data             tjz     xmt_cnt, #do_xmt_chksum
                         sub     xmt_cnt, #1
                         jmp     #tx_start
 
-do_xmt_chksum           mov     xmt_state, #STATE_WAIT
+do_xmt_chksum           mov     xmt_state, #do_xmt_wait
                         mov     txdata, #$ff
                         and     xmt_chksum, #$ff
                         sub     txdata, xmt_chksum
