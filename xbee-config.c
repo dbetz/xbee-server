@@ -12,9 +12,9 @@
 //#define SOFT_AP
 
 /* Xbee pins */
-#define XBEE_RX     13
-#define XBEE_TX     12
-#define XBEE_RTS    11
+#define XBEE_RX     9
+#define XBEE_TX     8
+#define XBEE_RTS    7
 #define XBEE_BAUD   9600
 
 #define PORT        80
